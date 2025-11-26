@@ -152,4 +152,6 @@ export interface RunModelOptions<TInput = any> {
   webhook?: string
   /** Фильтр событий webhook */
   webhook_events_filter?: ('start' | 'output' | 'logs' | 'completed')[]
+  /** Максимальное количество повторов при rate limit (429) ошибках (по умолчанию 3) */
+  maxRetries?: number
 }

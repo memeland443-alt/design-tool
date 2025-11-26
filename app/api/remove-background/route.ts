@@ -49,12 +49,13 @@ export async function POST(request: NextRequest) {
       // это сохраняет полупрозрачные области для лучшего качества краев
     }
 
-    // Запуск модели с типобезопасностью
+    // Запуск модели с типобезопасностью и retry логикой
     const result = await replicateService.runModel(
       BRIA_REMOVE_BG_CONFIG,
       {
         input,
         waitTimeout: 60, // Максимум 60 секунд
+        maxRetries: 3, // Автоматически повторять при rate limit
       }
     )
 

@@ -42,6 +42,7 @@ export class ReplicateService {
     options: RunModelOptions<TInput>
   ): Promise<ModelResult<TOutput>> {
     const startTime = Date.now()
+    const maxRetries = options.maxRetries ?? 3
 
     try {
       // Валидация входных данных
@@ -69,13 +70,16 @@ export class ReplicateService {
       }, {} as Record<string, any>)
       console.log(`📊 Input params:`, JSON.stringify(inputMeta, null, 2))
 
-      // Создание предсказания
-      const prediction = await this.client.predictions.create({
-        version: config.version,
-        input: input as Record<string, any>,
-        webhook: options.webhook,
-        webhook_events_filter: options.webhook_events_filter,
-      })
+      // Создание предсказания с retry логикой для rate limit
+      const prediction = await this.createPredictionWithRetry(
+        {
+          version: config.version,
+          input: input as Record<string, any>,
+          webhook: options.webhook,
+          webhook_events_filter: options.webhook_events_filter,
+        },
+        maxRetries
+      )
 
       console.log(`⏳ Prediction created: ${prediction.id}`)
 
@@ -199,6 +203,56 @@ export class ReplicateService {
    */
   async cancelPrediction(predictionId: string) {
     return await this.client.predictions.cancel(predictionId)
+  }
+
+  /**
+   * Создать предсказание с автоматическим retry при rate limit (429)
+   * @param params Параметры предсказания
+   * @param maxRetries Максимальное количество повторов
+   * @returns Созданное предсказание
+   */
+  private async createPredictionWithRetry(
+    params: {
+      version: string
+      input: Record<string, any>
+      webhook?: string
+      webhook_events_filter?: ('start' | 'output' | 'logs' | 'completed')[]
+    },
+    maxRetries: number
+  ) {
+    let lastError: any
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await this.client.predictions.create(params)
+      } catch (error: any) {
+        lastError = error
+
+        // Проверяем, является ли это 429 ошибкой (rate limit)
+        const is429 = error?.response?.status === 429 ||
+                      error?.status === 429 ||
+                      (error?.message && error.message.includes('429'))
+
+        if (!is429 || attempt === maxRetries) {
+          // Если это не 429 или закончились попытки - выбрасываем ошибку
+          throw error
+        }
+
+        // Получаем время ожидания из ответа (по умолчанию 2 секунды)
+        const retryAfter = error?.response?.headers?.get?.('retry-after') ||
+                          error?.retry_after ||
+                          2
+        const waitTime = parseInt(retryAfter) * 1000
+
+        console.log(`⏸️  Rate limit reached (429). Retrying in ${retryAfter}s... (attempt ${attempt + 1}/${maxRetries})`)
+
+        // Ждем перед следующей попыткой
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+      }
+    }
+
+    // Если дошли сюда - выбрасываем последнюю ошибку
+    throw lastError
   }
 
   /**

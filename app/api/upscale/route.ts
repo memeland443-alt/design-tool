@@ -46,12 +46,13 @@ export async function POST(request: NextRequest) {
       image: dataUrl,
     }
 
-    // Запуск модели с типобезопасностью
+    // Запуск модели с типобезопасностью и retry логикой
     const result = await replicateService.runModel(
       RECRAFT_UPSCALER_CONFIG,
       {
         input,
         waitTimeout: 60, // Максимум 60 секунд
+        maxRetries: 3, // Автоматически повторять при rate limit
       }
     )
 
