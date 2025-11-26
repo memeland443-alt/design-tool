@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, Download, Loader2, X } from 'lucide-react'
+import { Upload, Download, Loader2, X, ZoomIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 
@@ -14,7 +14,7 @@ interface ProcessedImage {
   error?: string
 }
 
-export default function BackgroundRemover() {
+export default function ImageUpscaler() {
   const [images, setImages] = useState<ProcessedImage[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
 
@@ -33,7 +33,8 @@ export default function BackgroundRemover() {
     accept: {
       'image/*': ['.png', '.jpg', '.jpeg', '.webp']
     },
-    multiple: true
+    multiple: true,
+    maxSize: 10 * 1024 * 1024, // 10MB limit
   })
 
   const processImages = async () => {
@@ -53,13 +54,14 @@ export default function BackgroundRemover() {
         const formData = new FormData()
         formData.append('image', blob, images[i].name)
 
-        const result = await fetch('/api/remove-background', {
+        const result = await fetch('/api/upscale', {
           method: 'POST',
           body: formData,
         })
 
         if (!result.ok) {
-          throw new Error('Failed to process image')
+          const errorData = await result.json()
+          throw new Error(errorData.error || 'Failed to process image')
         }
 
         const data = await result.json()
@@ -94,7 +96,7 @@ export default function BackgroundRemover() {
     const blob = await response.blob()
     const link = document.createElement('a')
     link.href = URL.createObjectURL(blob)
-    link.download = `no-bg-${filename}`
+    link.download = `upscaled-${filename}`
     link.click()
   }
 
@@ -108,6 +110,14 @@ export default function BackgroundRemover() {
 
   return (
     <div className="space-y-6">
+      {/* Info Banner */}
+      <div className="p-4 border rounded-lg bg-primary/5 border-primary/20">
+        <p className="text-sm text-muted-foreground">
+          Using <span className="font-semibold text-foreground">Recraft AI Crisp Upscale</span> -
+          automatically enhances image resolution with optimal quality settings
+        </p>
+      </div>
+
       {/* Upload Area */}
       <div
         {...getRootProps()}
@@ -126,7 +136,7 @@ export default function BackgroundRemover() {
           {isDragActive ? 'Drop images here' : 'Drag & drop images here'}
         </p>
         <p className="text-sm text-muted-foreground">
-          or click to select files (PNG, JPG, WEBP)
+          or click to select files (PNG, JPG, WEBP, max 10MB)
         </p>
       </div>
 
@@ -144,7 +154,10 @@ export default function BackgroundRemover() {
                 Processing...
               </>
             ) : (
-              'Remove Background'
+              <>
+                <ZoomIn className="mr-2 h-4 w-4" />
+                Upscale Images
+              </>
             )}
           </Button>
           <Button
@@ -160,7 +173,7 @@ export default function BackgroundRemover() {
 
       {/* Images Grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {images.map((image, index) => (
             <div key={index} className="border rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -194,11 +207,10 @@ export default function BackgroundRemover() {
 
                 {/* Processed */}
                 <div className="space-y-2">
-                  <p className="text-xs text-muted-foreground">Processed</p>
-                  <div className="relative w-full min-h-[200px] bg-[length:20px_20px] bg-[position:0_0,10px_10px] rounded-md overflow-hidden flex items-center justify-center"
-                       style={{
-                         backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%, transparent 75%, #e5e7eb 75%), linear-gradient(45deg, #e5e7eb 25%, transparent 25%, transparent 75%, #e5e7eb 75%)',
-                       }}>
+                  <p className="text-xs text-muted-foreground">
+                    Upscaled
+                  </p>
+                  <div className="relative w-full min-h-[200px] bg-muted rounded-md overflow-hidden flex items-center justify-center">
                     {image.status === 'pending' && (
                       <p className="text-xs text-muted-foreground bg-white/80 px-3 py-1 rounded">Waiting...</p>
                     )}
@@ -208,12 +220,17 @@ export default function BackgroundRemover() {
                       </div>
                     )}
                     {image.status === 'error' && (
-                      <p className="text-xs text-destructive bg-white/80 px-3 py-1 rounded p-2">Error</p>
+                      <div className="text-center p-3">
+                        <p className="text-xs text-destructive bg-white/80 px-3 py-1 rounded mb-2">Error</p>
+                        {image.error && (
+                          <p className="text-xs text-muted-foreground bg-white/80 px-2 py-1 rounded">{image.error}</p>
+                        )}
+                      </div>
                     )}
                     {image.status === 'completed' && image.processed && (
                       <Image
                         src={image.processed}
-                        alt="Processed"
+                        alt="Upscaled"
                         fill
                         className="object-contain"
                         sizes="(max-width: 768px) 50vw, 25vw"
@@ -232,7 +249,7 @@ export default function BackgroundRemover() {
                   className="w-full"
                 >
                   <Download className="mr-2 h-4 w-4" />
-                  Download
+                  Download Upscaled Image
                 </Button>
               )}
             </div>

@@ -1,6 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackgroundRemover from "@/components/background-remover";
+import ImageUpscaler from "@/components/image-upscaler";
 
 export default function Home() {
   return (
@@ -14,7 +15,7 @@ export default function Home() {
         <Tabs defaultValue="remove-bg" className="w-full">
           <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
             <TabsTrigger value="remove-bg">Remove BG</TabsTrigger>
-            <TabsTrigger value="upscale" disabled>Upscale</TabsTrigger>
+            <TabsTrigger value="upscale">Upscale</TabsTrigger>
             <TabsTrigger value="enhance" disabled>Enhance</TabsTrigger>
             <TabsTrigger value="more" disabled>More</TabsTrigger>
           </TabsList>
@@ -37,8 +38,13 @@ export default function Home() {
             <Card>
               <CardHeader>
                 <CardTitle>Image Upscaling</CardTitle>
-                <CardDescription>Coming soon...</CardDescription>
+                <CardDescription>
+                  Enhance image resolution using Recraft AI's crisp upscaling technology
+                </CardDescription>
               </CardHeader>
+              <CardContent>
+                <ImageUpscaler />
+              </CardContent>
             </Card>
           </TabsContent>
 
