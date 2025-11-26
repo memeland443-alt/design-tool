@@ -69,7 +69,9 @@ export async function POST(request: NextRequest) {
         executionTime: result.executionTime,
       })
     } else {
-      console.error(`❌ Background removal failed: ${result.error}`)
+      console.error(`❌ Background removal failed`)
+      console.error(`❌ Prediction ID: ${result.predictionId}`)
+      console.error(`❌ Error message:`, result.error)
       return NextResponse.json(
         {
           error: result.error || 'Failed to remove background',
@@ -79,7 +81,11 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error) {
-    console.error('❌ Error processing image:', error)
+    console.error('❌ Error processing image')
+    console.error('❌ Error message:', error instanceof Error ? error.message : error)
+    if (error instanceof Error && error.stack) {
+      console.error('❌ Stack trace:', error.stack)
+    }
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : 'Failed to process image',

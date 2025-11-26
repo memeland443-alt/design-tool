@@ -56,7 +56,18 @@ export class ReplicateService {
       }
 
       console.log(`🚀 Starting ${config.name} prediction...`)
-      console.log(`📊 Input:`, JSON.stringify(input, null, 2))
+
+      // Логируем только метаданные, не base64 данные
+      const inputMeta = Object.keys(input as Record<string, any>).reduce((acc, key) => {
+        const value = (input as any)[key]
+        if (typeof value === 'string' && value.startsWith('data:')) {
+          acc[key] = `<base64 data, ${Math.round(value.length / 1024)}KB>`
+        } else {
+          acc[key] = value
+        }
+        return acc
+      }, {} as Record<string, any>)
+      console.log(`📊 Input params:`, JSON.stringify(inputMeta, null, 2))
 
       // Создание предсказания
       const prediction = await this.client.predictions.create({
@@ -91,7 +102,8 @@ export class ReplicateService {
           executionTime,
         }
       } else if (result.status === 'failed') {
-        console.error(`❌ ${config.name} failed:`, result.error)
+        console.error(`❌ ${config.name} failed`)
+        console.error(`❌ Error details:`, JSON.stringify(result.error, null, 2))
         return {
           status: 'failed',
           error: result.error?.toString() || 'Prediction failed',
@@ -112,6 +124,10 @@ export class ReplicateService {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
       console.error(`❌ Error in ${config.name}:`, errorMessage)
+      if (error instanceof Error && error.stack) {
+        console.error(`❌ Stack trace:`, error.stack)
+      }
+      console.error(`❌ Full error:`, error)
 
       return {
         status: 'failed',
