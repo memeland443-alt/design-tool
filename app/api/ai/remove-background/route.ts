@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   createReplicateService,
-  RECRAFT_UPSCALER_CONFIG,
+  BRIA_REMOVE_BG_CONFIG,
   ReplicateService,
+  BriaRemoveBackgroundInput,
 } from '@/lib/replicate'
-import type { RecraftUpscalerInput } from '@/lib/replicate'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📥 Received image upscale request')
+    console.log('📥 Received background removal request')
 
     const formData = await request.formData()
     const image = formData.get('image') as File
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Конвертация изображения в Data URL
+    // Использует Data URL для файлов ≤256KB (рекомендация Replicate для лучшей производительности)
     const dataUrl = await ReplicateService.fileToDataUrl(image)
 
     console.log(`✅ Image converted to Data URL`)
@@ -41,14 +42,16 @@ export async function POST(request: NextRequest) {
     // Создание сервиса Replicate
     const replicateService = createReplicateService()
 
-    // Подготовка входных данных
-    const input: RecraftUpscalerInput = {
+    // Подготовка входных данных с оптимальными параметрами качества
+    const input: BriaRemoveBackgroundInput = {
       image: dataUrl,
+      // preserve_partial_alpha: true уже установлен в defaultInput конфигурации
+      // это сохраняет полупрозрачные области для лучшего качества краев
     }
 
     // Запуск модели с типобезопасностью и retry логикой
     const result = await replicateService.runModel(
-      RECRAFT_UPSCALER_CONFIG,
+      BRIA_REMOVE_BG_CONFIG,
       {
         input,
         waitTimeout: 60, // Максимум 60 секунд
@@ -58,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // Обработка результата
     if (result.status === 'succeeded' && result.output) {
-      console.log(`✅ Image upscaled successfully in ${result.executionTime}ms`)
+      console.log(`✅ Background removed successfully in ${result.executionTime}ms`)
       console.log(`📎 Output URL: ${result.output.url}`)
 
       return NextResponse.json({
@@ -67,12 +70,12 @@ export async function POST(request: NextRequest) {
         executionTime: result.executionTime,
       })
     } else {
-      console.error(`❌ Image upscale failed`)
+      console.error(`❌ Background removal failed`)
       console.error(`❌ Prediction ID: ${result.predictionId}`)
       console.error(`❌ Error message:`, result.error)
       return NextResponse.json(
         {
-          error: result.error || 'Failed to upscale image',
+          error: result.error || 'Failed to remove background',
           predictionId: result.predictionId,
         },
         { status: 500 }

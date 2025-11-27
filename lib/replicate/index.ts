@@ -4,4 +4,4 @@
 
 export * from './types'
 export * from './service'
-export { BRIA_REMOVE_BG_CONFIG, RECRAFT_UPSCALER_CONFIG } from './types'
+export * from './models'
