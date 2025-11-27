@@ -53,14 +53,14 @@ export function ImageProcessor({
   }, [images, processImages, setImages])
 
   const handleDownloadAll = useCallback(() => {
-    downloadAll(images, toolConfig.outputPrefix)
-  }, [images, downloadAll, toolConfig.outputPrefix])
+    downloadAll(images, toolConfig.outputSuffix)
+  }, [images, downloadAll, toolConfig.outputSuffix])
 
   const handleDownloadImage = useCallback(
     (url: string, filename: string) => {
-      downloadImage(url, filename, toolConfig.outputPrefix)
+      downloadImage(url, filename, toolConfig.outputSuffix)
     },
-    [downloadImage, toolConfig.outputPrefix]
+    [downloadImage, toolConfig.outputSuffix]
   )
 
   // Вычисляемые значения

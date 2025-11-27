@@ -44,19 +44,19 @@ export function useImageDownload(): UseImageDownloadReturn {
    * Скачивает одно изображение
    * @param url - URL изображения
    * @param filename - Имя файла
-   * @param prefix - Префикс для имени файла (по умолчанию пустая строка)
+   * @param suffix - Суффикс для имени файла (добавляется перед расширением)
    */
   const downloadImage = useCallback(async (
     url: string,
     filename: string,
-    prefix: string = ''
+    suffix: string = ''
   ) => {
     try {
       const response = await fetch(url)
       const blob = await response.blob()
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.download = `${prefix}${filename}`
+      link.download = addSuffixToFilename(filename, suffix)
       link.click()
 
       // Освобождаем URL после небольшой задержки
@@ -70,11 +70,11 @@ export function useImageDownload(): UseImageDownloadReturn {
   /**
    * Скачивает все обработанные изображения в ZIP архиве
    * @param images - Массив изображений
-   * @param prefix - Префикс для имени файлов
+   * @param suffix - Суффикс для имени файлов (добавляется перед расширением)
    */
   const downloadAll = useCallback(async (
     images: ProcessedImage[],
-    prefix: string = ''
+    suffix: string = ''
   ) => {
     setIsDownloading(true)
 
@@ -96,7 +96,7 @@ export function useImageDownload(): UseImageDownloadReturn {
           try {
             const response = await fetch(img.processed)
             const blob = await response.blob()
-            const filename = `${prefix}${img.name}`
+            const filename = addSuffixToFilename(img.name, suffix)
             zip.file(filename, blob)
           } catch (error) {
             console.error(`Failed to add ${img.name} to ZIP:`, error)
@@ -111,7 +111,7 @@ export function useImageDownload(): UseImageDownloadReturn {
       const link = document.createElement('a')
       link.href = URL.createObjectURL(zipBlob)
       const timestamp = new Date().toISOString().split('T')[0]
-      link.download = `${prefix || 'images'}_${timestamp}.zip`
+      link.download = `processed_${timestamp}.zip`
       link.click()
 
       // Освобождаем URL после небольшой задержки
