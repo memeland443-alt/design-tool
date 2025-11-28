@@ -3,14 +3,14 @@
  * Поддерживает типобезопасную конфигурацию различных моделей
  */
 
-import { Prediction } from 'replicate'
-
 /**
  * Базовый интерфейс для конфигурации модели Replicate
  */
 export interface ReplicateModelConfig<TInput = Record<string, any>, TOutput = any> {
-  /** ID версии модели в формате Replicate */
-  version: string
+  /** ID версии модели в формате Replicate (используется только если model не задан) */
+  version?: string
+  /** Имя модели в формате "owner/model-name" (например, "philz1337x/crystal-upscaler") */
+  model?: string
   /** Название модели для логирования и отладки */
   name: string
   /** Максимальное время ожидания в секундах (1-60) */

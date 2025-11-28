@@ -36,7 +36,7 @@ export default function Home() {
           </TabsList>
 
           {/* Удаление фона */}
-          <TabsContent value="remove-bg" className="mt-6">
+          <TabsContent value="remove-bg" className="mt-6" keepMounted>
             <Card>
               <CardHeader>
                 <CardTitle>{TEXTS.tools.backgroundRemover.name}</CardTitle>
@@ -51,7 +51,7 @@ export default function Home() {
           </TabsContent>
 
           {/* Увеличение разрешения */}
-          <TabsContent value="upscale" className="mt-6">
+          <TabsContent value="upscale" className="mt-6" keepMounted>
             <Card>
               <CardHeader>
                 <CardTitle>{TEXTS.tools.imageUpscaler.name}</CardTitle>

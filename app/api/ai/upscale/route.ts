@@ -44,6 +44,9 @@ export async function POST(request: NextRequest) {
     // Подготовка входных данных
     const input: RecraftUpscalerInput = {
       image: dataUrl,
+      scale_factor: 2,
+      creativity: 0,
+      output_format: 'png',
     }
 
     // Запуск модели с типобезопасностью и retry логикой

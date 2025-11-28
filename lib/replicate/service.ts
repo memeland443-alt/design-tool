@@ -70,58 +70,88 @@ export class ReplicateService {
       }, {} as Record<string, any>)
       console.log(`📊 Input params:`, JSON.stringify(inputMeta, null, 2))
 
-      // Создание предсказания с retry логикой для rate limit
-      const prediction = await this.createPredictionWithRetry(
-        {
-          version: config.version,
-          input: input as Record<string, any>,
-          webhook: options.webhook,
-          webhook_events_filter: options.webhook_events_filter,
-        },
-        maxRetries
-      )
+      // Проверяем, используется ли новый API (model) или старый (version)
+      if (config.model) {
+        // Новый API: replicate.run() для моделей типа "owner/model-name"
+        console.log(`🔧 Using new API with model: ${config.model}`)
+        const output = await this.runModelWithRetry(
+          config.model as `${string}/${string}`,
+          input as Record<string, any>,
+          maxRetries
+        )
 
-      console.log(`⏳ Prediction created: ${prediction.id}`)
-
-      // Ожидание результата
-      const result = await this.waitForPrediction(
-        prediction.id,
-        options.waitTimeout || config.waitTimeout || 30
-      )
-
-      const executionTime = Date.now() - startTime
-
-      // Обработка результата
-      if (result.status === 'succeeded') {
-        const output = config.transformOutput
-          ? config.transformOutput(result.output)
-          : result.output
+        const executionTime = Date.now() - startTime
+        const transformedOutput = config.transformOutput
+          ? config.transformOutput(output)
+          : (output as TOutput)
 
         console.log(`✅ ${config.name} succeeded in ${executionTime}ms`)
 
         return {
           status: 'succeeded',
-          output,
-          predictionId: prediction.id,
+          output: transformedOutput,
+          predictionId: 'n/a',
           executionTime,
         }
-      } else if (result.status === 'failed') {
-        console.error(`❌ ${config.name} failed`)
-        console.error(`❌ Error details:`, JSON.stringify(result.error, null, 2))
-        return {
-          status: 'failed',
-          error: result.error?.toString() || 'Prediction failed',
-          predictionId: prediction.id,
-          executionTime,
+      } else if (config.version) {
+        // Старый API: predictions.create() с version ID
+        console.log(`🔧 Using legacy API with version: ${config.version}`)
+
+        // Создание предсказания с retry логикой для rate limit
+        const prediction = await this.createPredictionWithRetry(
+          {
+            version: config.version,
+            input: input as Record<string, any>,
+            webhook: options.webhook,
+            webhook_events_filter: options.webhook_events_filter,
+          },
+          maxRetries
+        )
+
+        console.log(`⏳ Prediction created: ${prediction.id}`)
+
+        // Ожидание результата
+        const result = await this.waitForPrediction(
+          prediction.id,
+          options.waitTimeout || config.waitTimeout || 30
+        )
+
+        const executionTime = Date.now() - startTime
+
+        // Обработка результата
+        if (result.status === 'succeeded') {
+          const output = config.transformOutput
+            ? config.transformOutput(result.output)
+            : result.output
+
+          console.log(`✅ ${config.name} succeeded in ${executionTime}ms`)
+
+          return {
+            status: 'succeeded',
+            output,
+            predictionId: prediction.id,
+            executionTime,
+          }
+        } else if (result.status === 'failed') {
+          console.error(`❌ ${config.name} failed`)
+          console.error(`❌ Error details:`, JSON.stringify(result.error, null, 2))
+          return {
+            status: 'failed',
+            error: result.error?.toString() || 'Prediction failed',
+            predictionId: prediction.id,
+            executionTime,
+          }
+        } else {
+          console.error(`⏱️ ${config.name} timed out`)
+          return {
+            status: 'failed',
+            error: 'Prediction timed out',
+            predictionId: prediction.id,
+            executionTime,
+          }
         }
       } else {
-        console.error(`⏱️ ${config.name} timed out`)
-        return {
-          status: 'failed',
-          error: 'Prediction timed out',
-          predictionId: prediction.id,
-          executionTime,
-        }
+        throw new Error('Either model or version must be specified in config')
       }
     } catch (error) {
       const executionTime = Date.now() - startTime
@@ -203,6 +233,54 @@ export class ReplicateService {
    */
   async cancelPrediction(predictionId: string) {
     return await this.client.predictions.cancel(predictionId)
+  }
+
+  /**
+   * Запустить модель через новый API (replicate.run) с retry логикой
+   * @param model Имя модели в формате "owner/model-name"
+   * @param input Входные параметры
+   * @param maxRetries Максимальное количество повторов
+   * @returns Результат выполнения модели
+   */
+  private async runModelWithRetry(
+    model: `${string}/${string}`,
+    input: Record<string, any>,
+    maxRetries: number
+  ) {
+    let lastError: any
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const output = await this.client.run(model, { input })
+        return output
+      } catch (error: any) {
+        lastError = error
+
+        // Проверяем, является ли это 429 ошибкой (rate limit)
+        const is429 = error?.response?.status === 429 ||
+                      error?.status === 429 ||
+                      (error?.message && error.message.includes('429'))
+
+        if (!is429 || attempt === maxRetries) {
+          // Если это не 429 или закончились попытки - выбрасываем ошибку
+          throw error
+        }
+
+        // Получаем время ожидания из ответа (по умолчанию 2 секунды)
+        const retryAfter = error?.response?.headers?.get?.('retry-after') ||
+                          error?.retry_after ||
+                          2
+        const waitTime = parseInt(retryAfter) * 1000
+
+        console.log(`⏸️  Rate limit reached (429). Retrying in ${retryAfter}s... (attempt ${attempt + 1}/${maxRetries})`)
+
+        // Ждем перед следующей попыткой
+        await new Promise(resolve => setTimeout(resolve, waitTime))
+      }
+    }
+
+    // Если дошли сюда - выбрасываем последнюю ошибку
+    throw lastError
   }
 
   /**

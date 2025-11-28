@@ -37,14 +37,19 @@ TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content> & {
+    /** Keep the content mounted when inactive to preserve state */
+    keepMounted?: boolean
+  }
+>(({ className, keepMounted = false, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      keepMounted && "data-[state=inactive]:hidden",
       className
     )}
+    forceMount={keepMounted ? true : undefined}
     {...props}
   />
 ))

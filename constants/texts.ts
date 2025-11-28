@@ -49,7 +49,7 @@ export const TEXTS = {
   tools: {
     backgroundRemover: {
       name: 'Удаление фона',
-      tabName: 'Убрать фон',
+      tabName: 'Remove BG',
       description: 'Загрузите изображения и автоматически удалите фон с помощью AI',
       actionButton: 'Удалить фон',
       processing: 'Удаление фона...',
