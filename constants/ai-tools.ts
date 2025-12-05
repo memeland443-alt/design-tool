@@ -46,6 +46,26 @@ export const IMAGE_UPSCALER_CONFIG: Omit<AIToolConfig, 'icon'> = {
 }
 
 /**
+ * Конфигурация инструмента перевода изображений
+ */
+export const IMAGE_TRANSLATOR_CONFIG: Omit<AIToolConfig, 'icon'> = {
+  id: 'translate',
+  name: TEXTS.tools.imageTranslator.name,
+  description: TEXTS.tools.imageTranslator.description,
+  category: 'image',
+  apiEndpoint: '/api/ai/translate',
+  acceptedFileTypes: ACCEPTED_FILE_TYPES.images,
+  maxFileSize: MAX_FILE_SIZES.image,
+  processingLabel: TEXTS.tools.imageTranslator.processing,
+  outputSuffix: TEXTS.tools.imageTranslator.outputSuffix,
+  infoBanner: TEXTS.tools.imageTranslator.infoBanner,
+  labels: {
+    original: TEXTS.tools.imageTranslator.labels.original,
+    processed: TEXTS.tools.imageTranslator.labels.processed,
+  },
+}
+
+/**
  * Конфигурация инструмента улучшения изображений (заготовка)
  */
 export const IMAGE_ENHANCER_CONFIG: Omit<AIToolConfig, 'icon'> = {
@@ -67,6 +87,7 @@ export const IMAGE_ENHANCER_CONFIG: Omit<AIToolConfig, 'icon'> = {
 export const AI_TOOLS = {
   backgroundRemover: BACKGROUND_REMOVER_CONFIG,
   imageUpscaler: IMAGE_UPSCALER_CONFIG,
+  imageTranslator: IMAGE_TRANSLATOR_CONFIG,
   imageEnhancer: IMAGE_ENHANCER_CONFIG,
 } as const
 

@@ -21,4 +21,6 @@ export interface ProcessedImage {
   status: ImageStatus
   /** Сообщение об ошибке (если status === 'error') */
   error?: string
+  /** Переведённый текст (для image translator) */
+  translatedText?: string
 }

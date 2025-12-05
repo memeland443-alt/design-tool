@@ -41,6 +41,7 @@ export function ImageComparisonView({
             fill
             className="object-contain"
             sizes="(max-width: 768px) 50vw, 25vw"
+            unoptimized
           />
         </div>
       </div>
@@ -71,6 +72,7 @@ export function ImageComparisonView({
                 fill
                 className="object-contain"
                 sizes="(max-width: 768px) 50vw, 25vw"
+                unoptimized
               />
             )
           )}

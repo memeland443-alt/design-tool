@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import BackgroundRemoverTool from "@/components/features/background-remover/background-remover-tool";
 import ImageUpscalerTool from "@/components/features/image-upscaler/image-upscaler-tool";
+import ImageTranslatorTool from "@/components/features/image-translator/image-translator-tool";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { TEXTS } from "@/constants/texts";
 
@@ -20,12 +21,15 @@ export default function Home() {
 
         {/* Табы с инструментами */}
         <Tabs defaultValue="remove-bg" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[500px]">
             <TabsTrigger value="remove-bg">
               {TEXTS.tools.backgroundRemover.tabName}
             </TabsTrigger>
             <TabsTrigger value="upscale">
               {TEXTS.tools.imageUpscaler.tabName}
+            </TabsTrigger>
+            <TabsTrigger value="translate">
+              {TEXTS.tools.imageTranslator.tabName}
             </TabsTrigger>
             <TabsTrigger value="enhance" disabled>
               {TEXTS.tools.imageEnhancer.tabName}
@@ -61,6 +65,21 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 <ImageUpscalerTool />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Перевод изображений */}
+          <TabsContent value="translate" className="mt-6" keepMounted>
+            <Card>
+              <CardHeader>
+                <CardTitle>{TEXTS.tools.imageTranslator.name}</CardTitle>
+                <CardDescription>
+                  {TEXTS.tools.imageTranslator.description}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ImageTranslatorTool />
               </CardContent>
             </Card>
           </TabsContent>
