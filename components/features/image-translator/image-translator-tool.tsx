@@ -16,7 +16,6 @@ import { useLanguageSelection } from '@/hooks/use-language-selection'
 import { IMAGE_TRANSLATOR_CONFIG } from '@/constants/ai-tools'
 import { TEXTS } from '@/constants/texts'
 import { ProcessedImage, ImageStatus } from '@/types/image'
-import { InfoBanner } from '@/components/shared/layout/info-banner'
 
 export default function ImageTranslatorTool() {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -126,11 +125,6 @@ export default function ImageTranslatorTool() {
 
   return (
     <div className="space-y-6">
-      {/* Информационный баннер */}
-      {IMAGE_TRANSLATOR_CONFIG.infoBanner && (
-        <InfoBanner>{IMAGE_TRANSLATOR_CONFIG.infoBanner}</InfoBanner>
-      )}
-
       {/* Селектор языка */}
       <LanguageSelector
         selectedLanguage={selectedLanguage}

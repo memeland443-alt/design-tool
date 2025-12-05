@@ -76,7 +76,7 @@ export const TEXTS = {
     imageTranslator: {
       name: 'Перевод изображений',
       tabName: 'Translate',
-      description: 'Переведите текст на изображениях с автоматической адаптацией контента',
+      description: 'AI автоматически адаптирует все аспекты: язык, единицы измерения, даты, валюту и культурные особенности',
       actionButton: 'Перевести',
       processing: 'Перевод текста...',
       outputSuffix: '-translated',
