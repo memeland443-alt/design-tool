@@ -9,6 +9,11 @@ import {
   RecraftUpscalerInput,
 } from '@/lib/replicate'
 
+// Ограничения для автоматического апскейла (чтобы избежать больших расходов)
+const MAX_WIDTH_FOR_UPSCALE = 2048
+const MAX_HEIGHT_FOR_UPSCALE = 2048
+const MAX_MEGAPIXELS_FOR_UPSCALE = 4 // 2048x2048 = 4 мегапикселя
+
 export async function POST(request: NextRequest) {
   try {
     console.log('📥 Received background removal request')
@@ -73,6 +78,28 @@ export async function POST(request: NextRequest) {
     if (result.status === 'succeeded' && result.output) {
       console.log(`✅ Background removed successfully in ${result.executionTime}ms`)
       console.log(`📎 Output URL: ${result.output.url}`)
+
+      // Проверяем размер оригинального изображения перед апскейлом
+      const megapixels = (originalWidth * originalHeight) / 1_000_000
+      const isTooLargeForUpscale =
+        originalWidth > MAX_WIDTH_FOR_UPSCALE ||
+        originalHeight > MAX_HEIGHT_FOR_UPSCALE ||
+        megapixels > MAX_MEGAPIXELS_FOR_UPSCALE
+
+      if (isTooLargeForUpscale) {
+        console.warn(`⚠️ Original image is too large for automatic upscaling`)
+        console.warn(`⚠️ Maximum allowed: ${MAX_WIDTH_FOR_UPSCALE}x${MAX_HEIGHT_FOR_UPSCALE} (${MAX_MEGAPIXELS_FOR_UPSCALE} MP)`)
+        console.warn(`⚠️ Your image: ${originalWidth}x${originalHeight} (${megapixels.toFixed(2)} MP)`)
+        console.warn(`⚠️ Skipping upscaling and resizing, returning background removal result`)
+
+        return NextResponse.json({
+          output: result.output.url,
+          predictionId: result.predictionId,
+          executionTime: result.executionTime ?? 0,
+          warning: `Изображение слишком большое для автоматического апскейла (${originalWidth}x${originalHeight}). Максимальный размер: ${MAX_WIDTH_FOR_UPSCALE}x${MAX_HEIGHT_FOR_UPSCALE} пикселей.`,
+          skippedStages: ['upscaling', 'resizing'],
+        })
+      }
 
       // Автоматический апскейл после удаления фона
       console.log('🔍 Starting automatic upscaling...')

@@ -5,6 +5,21 @@
 
 import { useState, useCallback } from 'react'
 import { ProcessedImage } from '@/types/image'
+import { ImageDimensionLimits } from '@/types/ai-tool'
+
+/**
+ * Получает размеры изображения из URL
+ */
+async function getImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      resolve({ width: img.width, height: img.height })
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
 
 export interface UseImageUploadOptions {
   /** Поддерживаемые типы файлов */
@@ -13,13 +28,15 @@ export interface UseImageUploadOptions {
   maxSize?: number
   /** Разрешить множественную загрузку */
   multiple?: boolean
+  /** Ограничения размеров изображения (для валидации) */
+  dimensionLimits?: ImageDimensionLimits
 }
 
 export interface UseImageUploadReturn {
   /** Массив изображений */
   images: ProcessedImage[]
   /** Функция для добавления новых изображений */
-  addImages: (files: File[]) => void
+  addImages: (files: File[]) => Promise<void>
   /** Функция для удаления изображения по индексу */
   removeImage: (index: number) => void
   /** Функция для очистки всех изображений */
@@ -37,17 +54,50 @@ export function useImageUpload(options?: UseImageUploadOptions): UseImageUploadR
   /**
    * Добавляет новые файлы в список изображений
    * Создает blob URLs для preview
+   * Проверяет размеры изображения, если заданы ограничения
    */
-  const addImages = useCallback((files: File[]) => {
-    const newImages: ProcessedImage[] = files.map(file => ({
-      original: URL.createObjectURL(file),
-      processed: null,
-      name: file.name,
-      status: 'pending' as const,
-    }))
+  const addImages = useCallback(async (files: File[]) => {
+    const newImages: ProcessedImage[] = await Promise.all(
+      files.map(async (file) => {
+        const blobUrl = URL.createObjectURL(file)
+
+        // Если заданы ограничения размеров, проверяем изображение
+        if (options?.dimensionLimits) {
+          try {
+            const dimensions = await getImageDimensions(blobUrl)
+            const megapixels = (dimensions.width * dimensions.height) / 1_000_000
+
+            // Проверяем, не превышает ли изображение лимиты
+            if (
+              dimensions.width > options.dimensionLimits.maxWidth ||
+              dimensions.height > options.dimensionLimits.maxHeight ||
+              megapixels > options.dimensionLimits.maxMegapixels
+            ) {
+              return {
+                original: blobUrl,
+                processed: null,
+                name: file.name,
+                status: 'error' as const,
+                error: `Изображение слишком большое (${dimensions.width}×${dimensions.height} пикселей, ${megapixels.toFixed(1)} Мп). Максимальный размер: ${options.dimensionLimits.maxWidth}×${options.dimensionLimits.maxHeight} пикселей (${options.dimensionLimits.maxMegapixels} Мп)`,
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check image dimensions:', error)
+            // Если не удалось проверить размеры, все равно добавляем изображение
+          }
+        }
+
+        return {
+          original: blobUrl,
+          processed: null,
+          name: file.name,
+          status: 'pending' as const,
+        }
+      })
+    )
 
     setImages(prev => [...prev, ...newImages])
-  }, [])
+  }, [options?.dimensionLimits])
 
   /**
    * Удаляет изображение по индексу

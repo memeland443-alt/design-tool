@@ -10,6 +10,18 @@ import { ReactNode } from 'react'
 export type ToolCategory = 'image' | 'video'
 
 /**
+ * Ограничения размеров изображения
+ */
+export interface ImageDimensionLimits {
+  /** Максимальная ширина в пикселях */
+  maxWidth: number
+  /** Максимальная высота в пикселях */
+  maxHeight: number
+  /** Максимальное количество мегапикселей */
+  maxMegapixels: number
+}
+
+/**
  * Конфигурация AI инструмента
  */
 export interface AIToolConfig {
@@ -42,4 +54,6 @@ export interface AIToolConfig {
   comingSoon?: boolean
   /** Контент информационного баннера */
   infoBanner?: string
+  /** Ограничения размеров изображения (для валидации при загрузке) */
+  dimensionLimits?: ImageDimensionLimits
 }

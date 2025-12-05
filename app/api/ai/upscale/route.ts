@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
+import sharp from 'sharp'
 import {
   createReplicateService,
   RECRAFT_UPSCALER_CONFIG,
   ReplicateService,
   RecraftUpscalerInput,
 } from '@/lib/replicate'
+
+// Ограничения для апскейла (чтобы избежать больших расходов)
+const MAX_WIDTH = 2048
+const MAX_HEIGHT = 2048
+const MAX_MEGAPIXELS = 4 // 2048x2048 = 4 мегапикселя
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +28,42 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`📸 Processing image: ${image.name} (${image.size} bytes, ${image.type})`)
+
+    // Проверяем размеры изображения перед апскейлом
+    const imageBuffer = Buffer.from(await image.arrayBuffer())
+    const imageMetadata = await sharp(imageBuffer).metadata()
+    const width = imageMetadata.width || 0
+    const height = imageMetadata.height || 0
+    const megapixels = (width * height) / 1_000_000
+
+    console.log(`📐 Image dimensions: ${width}x${height} (${megapixels.toFixed(2)} MP)`)
+
+    // Проверка размеров изображения
+    if (width > MAX_WIDTH || height > MAX_HEIGHT || megapixels > MAX_MEGAPIXELS) {
+      console.warn(`⚠️ Image is too large for upscaling`)
+      console.warn(`⚠️ Maximum allowed: ${MAX_WIDTH}x${MAX_HEIGHT} (${MAX_MEGAPIXELS} MP)`)
+      console.warn(`⚠️ Your image: ${width}x${height} (${megapixels.toFixed(2)} MP)`)
+
+      return NextResponse.json(
+        {
+          error: 'Image is too large for upscaling',
+          details: {
+            message: `Изображение слишком большое для апскейла. Максимальный размер: ${MAX_WIDTH}x${MAX_HEIGHT} пикселей (${MAX_MEGAPIXELS} мегапикселей)`,
+            yourImage: {
+              width,
+              height,
+              megapixels: parseFloat(megapixels.toFixed(2)),
+            },
+            maxAllowed: {
+              width: MAX_WIDTH,
+              height: MAX_HEIGHT,
+              megapixels: MAX_MEGAPIXELS,
+            },
+          },
+        },
+        { status: 400 }
+      )
+    }
 
     // Проверка API токена
     if (!process.env.REPLICATE_API_TOKEN) {

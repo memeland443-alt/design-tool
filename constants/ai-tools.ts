@@ -43,6 +43,11 @@ export const IMAGE_UPSCALER_CONFIG: Omit<AIToolConfig, 'icon'> = {
     original: TEXTS.tools.imageUpscaler.labels.original,
     processed: TEXTS.tools.imageUpscaler.labels.processed,
   },
+  dimensionLimits: {
+    maxWidth: 2048,
+    maxHeight: 2048,
+    maxMegapixels: 4,
+  },
 }
 
 /**

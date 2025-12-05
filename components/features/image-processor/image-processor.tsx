@@ -39,6 +39,7 @@ export function ImageProcessor({
   } = useImageUpload({
     acceptedFileTypes: toolConfig.acceptedFileTypes,
     maxSize: toolConfig.maxFileSize,
+    dimensionLimits: toolConfig.dimensionLimits,
   })
 
   const { processImages, isProcessing } = useImageProcessing({
