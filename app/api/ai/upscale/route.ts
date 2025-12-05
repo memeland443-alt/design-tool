@@ -41,12 +41,13 @@ export async function POST(request: NextRequest) {
     // Создание сервиса Replicate
     const replicateService = createReplicateService()
 
-    // Подготовка входных данных
+    // Подготовка входных данных с дефолтными настройками Bria
     const input: RecraftUpscalerInput = {
       image: dataUrl,
-      scale_factor: 2,
-      creativity: 0,
-      output_format: 'png',
+      desired_increase: 2,
+      preserve_alpha: true,
+      sync: true,
+      content_moderation: false,
     }
 
     // Запуск модели с типобезопасностью и retry логикой

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import sharp from 'sharp'
 import {
   createReplicateService,
   BRIA_REMOVE_BG_CONFIG,
+  RECRAFT_UPSCALER_CONFIG,
   ReplicateService,
   BriaRemoveBackgroundInput,
+  RecraftUpscalerInput,
 } from '@/lib/replicate'
 
 export async function POST(request: NextRequest) {
@@ -22,6 +25,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`📸 Processing image: ${image.name} (${image.size} bytes, ${image.type})`)
+
+    // Получаем размеры оригинального изображения
+    const imageBuffer = Buffer.from(await image.arrayBuffer())
+    const originalMetadata = await sharp(imageBuffer).metadata()
+    const originalWidth = originalMetadata.width || 0
+    const originalHeight = originalMetadata.height || 0
+    console.log(`📐 Original image dimensions: ${originalWidth}x${originalHeight}`)
 
     // Проверка API токена
     if (!process.env.REPLICATE_API_TOKEN) {
@@ -64,11 +74,115 @@ export async function POST(request: NextRequest) {
       console.log(`✅ Background removed successfully in ${result.executionTime}ms`)
       console.log(`📎 Output URL: ${result.output.url}`)
 
-      return NextResponse.json({
-        output: result.output.url,
-        predictionId: result.predictionId,
-        executionTime: result.executionTime,
-      })
+      // Автоматический апскейл после удаления фона
+      console.log('🔍 Starting automatic upscaling...')
+
+      const upscaleInput: RecraftUpscalerInput = {
+        image: result.output.url, // Используем URL изображения без фона
+        desired_increase: 2,
+        preserve_alpha: true,
+        sync: true,
+        content_moderation: false,
+      }
+
+      const upscaleResult = await replicateService.runModel(
+        RECRAFT_UPSCALER_CONFIG,
+        {
+          input: upscaleInput,
+          waitTimeout: 60,
+          maxRetries: 3,
+        }
+      )
+
+      if (upscaleResult.status === 'succeeded' && upscaleResult.output) {
+        const bgRemovalTime = result.executionTime ?? 0
+        const upscaleTime = upscaleResult.executionTime ?? 0
+        let totalTime = bgRemovalTime + upscaleTime
+
+        console.log(`✅ Image upscaled successfully in ${upscaleTime}ms`)
+        console.log(`📎 Upscaled output URL: ${upscaleResult.output.url}`)
+
+        // Растягиваем до оригинального размера с сохранением пропорций
+        console.log('📏 Resizing to original dimensions...')
+        const resizeStartTime = Date.now()
+
+        try {
+          // Скачиваем апскейленное изображение
+          const upscaledImageResponse = await fetch(upscaleResult.output.url)
+          const upscaledImageBuffer = Buffer.from(await upscaledImageResponse.arrayBuffer())
+
+          // Растягиваем до оригинального размера с сохранением пропорций
+          const resizedImageBuffer = await sharp(upscaledImageBuffer)
+            .resize(originalWidth, originalHeight, {
+              fit: 'contain', // Сохраняем пропорции, вписываем в размер
+              background: { r: 0, g: 0, b: 0, alpha: 0 }, // Прозрачный фон
+            })
+            .png() // Сохраняем как PNG для поддержки прозрачности
+            .toBuffer()
+
+          const resizeTime = Date.now() - resizeStartTime
+          totalTime += resizeTime
+
+          // Конвертируем в Data URL
+          const resizedDataUrl = `data:image/png;base64,${resizedImageBuffer.toString('base64')}`
+
+          console.log(`✅ Image resized to original dimensions in ${resizeTime}ms`)
+          console.log(`📐 Final dimensions: ${originalWidth}x${originalHeight}`)
+          console.log(`⏱️ Total processing time: ${totalTime}ms`)
+
+          return NextResponse.json({
+            output: resizedDataUrl,
+            predictionId: upscaleResult.predictionId,
+            executionTime: totalTime,
+            dimensions: {
+              original: { width: originalWidth, height: originalHeight },
+            },
+            stages: {
+              backgroundRemoval: {
+                predictionId: result.predictionId,
+                executionTime: bgRemovalTime,
+              },
+              upscaling: {
+                predictionId: upscaleResult.predictionId,
+                executionTime: upscaleTime,
+              },
+              resizing: {
+                executionTime: resizeTime,
+              },
+            },
+          })
+        } catch (resizeError) {
+          console.error(`❌ Resizing failed:`, resizeError)
+          // Возвращаем апскейленный результат без растягивания
+          return NextResponse.json({
+            output: upscaleResult.output.url,
+            predictionId: upscaleResult.predictionId,
+            executionTime: totalTime,
+            warning: 'Resizing failed, returning upscaled result',
+            stages: {
+              backgroundRemoval: {
+                predictionId: result.predictionId,
+                executionTime: bgRemovalTime,
+              },
+              upscaling: {
+                predictionId: upscaleResult.predictionId,
+                executionTime: upscaleTime,
+              },
+            },
+          })
+        }
+      } else {
+        console.error(`❌ Upscaling failed, returning background removal result`)
+        console.error(`❌ Upscale error:`, upscaleResult.error)
+
+        // Если апскейл не удался, возвращаем результат без фона
+        return NextResponse.json({
+          output: result.output.url,
+          predictionId: result.predictionId,
+          executionTime: result.executionTime ?? 0,
+          warning: 'Upscaling failed, returning original size',
+        })
+      }
     } else {
       console.error(`❌ Background removal failed`)
       console.error(`❌ Prediction ID: ${result.predictionId}`)

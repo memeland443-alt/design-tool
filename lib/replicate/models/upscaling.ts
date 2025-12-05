@@ -1,33 +1,35 @@
 /**
- * Конфигурация модели Crystal Upscaler
+ * Конфигурация модели Bria Increase Resolution
  */
 
 import { ReplicateModelConfig } from '../types'
 import { ImageProcessingOutput } from './background-removal'
 
 /**
- * Параметры для модели Crystal Upscaler
+ * Параметры для модели Bria Increase Resolution
  */
 export interface RecraftUpscalerInput {
   /** Base64 Data URL или HTTP URL изображения */
   image: string
-  /** Scale factor for upscaling (default: 2) */
-  scale_factor?: number
-  /** Creativity level for upscaling (default: 0, min: 0, max: 10) */
-  creativity?: number
-  /** Format of the output image (default: "png") */
-  output_format?: string
+  /** Resolution multiplier (scale factor). Possible values are 2 or 4. Maximum total area is 8192x8192 pixels (default: 2) */
+  desired_increase?: number
+  /** Preserve alpha channel in output. When true, maintains original transparency. When false, output is fully opaque. (default: true) */
+  preserve_alpha?: boolean
+  /** Synchronous response mode (default: true) */
+  sync?: boolean
+  /** Enable content moderation (default: false) */
+  content_moderation?: boolean
 }
 
 /**
- * Конфигурация модели Crystal Upscaler
+ * Конфигурация модели Bria Increase Resolution
  */
 export const RECRAFT_UPSCALER_CONFIG: ReplicateModelConfig<
   RecraftUpscalerInput,
   ImageProcessingOutput
 > = {
-  model: 'philz1337x/crystal-upscaler',
-  name: 'Crystal Upscaler',
+  model: 'bria/increase-resolution',
+  name: 'Bria Increase Resolution',
   waitTimeout: 60,
   validateInput: (input) => {
     if (!input.image) {
