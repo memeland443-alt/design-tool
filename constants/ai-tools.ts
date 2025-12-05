@@ -46,7 +46,7 @@ export const IMAGE_UPSCALER_CONFIG: Omit<AIToolConfig, 'icon'> = {
 }
 
 /**
- * Конфигурация инструмента перевода изображений
+ * Конфигурация инструмента перевода изображений и PDF
  */
 export const IMAGE_TRANSLATOR_CONFIG: Omit<AIToolConfig, 'icon'> = {
   id: 'translate',
@@ -54,8 +54,8 @@ export const IMAGE_TRANSLATOR_CONFIG: Omit<AIToolConfig, 'icon'> = {
   description: TEXTS.tools.imageTranslator.description,
   category: 'image',
   apiEndpoint: '/api/ai/translate',
-  acceptedFileTypes: ACCEPTED_FILE_TYPES.images,
-  maxFileSize: MAX_FILE_SIZES.image,
+  acceptedFileTypes: ACCEPTED_FILE_TYPES.imagesAndPdf,
+  maxFileSize: MAX_FILE_SIZES.pdf,
   processingLabel: TEXTS.tools.imageTranslator.processing,
   outputSuffix: TEXTS.tools.imageTranslator.outputSuffix,
   infoBanner: TEXTS.tools.imageTranslator.infoBanner,

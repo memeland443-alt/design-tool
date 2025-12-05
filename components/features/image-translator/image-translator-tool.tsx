@@ -43,6 +43,8 @@ export default function ImageTranslatorTool() {
       // Пропускаем уже обработанные изображения
       if (images[i].status !== 'pending') continue
 
+      const isPdf = images[i].name.toLowerCase().endsWith('.pdf')
+
       // Обновляем статус на "processing"
       setImages(prev =>
         prev.map((img, idx) =>
@@ -55,38 +57,74 @@ export default function ImageTranslatorTool() {
         const response = await fetch(images[i].original)
         const blob = await response.blob()
 
-        // Создаем FormData с изображением и целевым языком
-        const formData = new FormData()
-        formData.append('image', blob, images[i].name)
-        formData.append('targetLanguage', selectedLanguage.code)
+        if (isPdf) {
+          // Обработка PDF файлов
+          const formData = new FormData()
+          formData.append('file', blob, images[i].name)
+          formData.append('targetLanguage', selectedLanguage.code)
+          formData.append('languageName', selectedLanguage.name)
 
-        // Отправляем на API
-        const result = await fetch(IMAGE_TRANSLATOR_CONFIG.apiEndpoint, {
-          method: 'POST',
-          body: formData,
-        })
+          // Отправляем на PDF API endpoint
+          const result = await fetch('/api/ai/translate-pdf', {
+            method: 'POST',
+            body: formData,
+          })
 
-        if (!result.ok) {
-          const errorData = await result.json().catch(() => ({}))
-          throw new Error(errorData.error || 'Failed to translate image')
-        }
+          if (!result.ok) {
+            const errorData = await result.json().catch(() => ({}))
+            throw new Error(errorData.error || 'Failed to translate PDF')
+          }
 
-        const data = await result.json()
+          // Получаем переведенный PDF как blob
+          const translatedBlob = await result.blob()
+          const translatedUrl = URL.createObjectURL(translatedBlob)
 
-        // Обновляем с результатом
-        // Сохраняем переведенное изображение (или текст как fallback)
-        setImages(prev =>
-          prev.map((img, idx) =>
-            idx === i
-              ? {
-                  ...img,
-                  processed: data.output, // URL переведенного изображения
-                  translatedText: data.translatedText, // Сохраняем текст для отладки
-                  status: 'completed' as ImageStatus,
-                }
-              : img
+          // Обновляем с результатом
+          setImages(prev =>
+            prev.map((img, idx) =>
+              idx === i
+                ? {
+                    ...img,
+                    processed: translatedUrl,
+                    status: 'completed' as ImageStatus,
+                  }
+                : img
+            )
           )
-        )
+        } else {
+          // Обработка изображений (существующий код)
+          const formData = new FormData()
+          formData.append('image', blob, images[i].name)
+          formData.append('targetLanguage', selectedLanguage.code)
+
+          // Отправляем на API
+          const result = await fetch(IMAGE_TRANSLATOR_CONFIG.apiEndpoint, {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!result.ok) {
+            const errorData = await result.json().catch(() => ({}))
+            throw new Error(errorData.error || 'Failed to translate image')
+          }
+
+          const data = await result.json()
+
+          // Обновляем с результатом
+          // Сохраняем переведенное изображение (или текст как fallback)
+          setImages(prev =>
+            prev.map((img, idx) =>
+              idx === i
+                ? {
+                    ...img,
+                    processed: data.output, // URL переведенного изображения
+                    translatedText: data.translatedText, // Сохраняем текст для отладки
+                    status: 'completed' as ImageStatus,
+                  }
+                : img
+            )
+          )
+        }
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Unknown error'
@@ -104,12 +142,12 @@ export default function ImageTranslatorTool() {
           )
         )
 
-        console.error(`Failed to translate image ${images[i].name}:`, error)
+        console.error(`Failed to translate ${images[i].name}:`, error)
       }
     }
 
     setIsProcessing(false)
-  }, [images, selectedLanguage.code, setImages])
+  }, [images, selectedLanguage.code, selectedLanguage.name, setImages])
 
   // Используем стандартный hook для скачивания изображений
   const handleDownloadAll = useCallback(() => {
@@ -139,7 +177,7 @@ export default function ImageTranslatorTool() {
         maxSize={IMAGE_TRANSLATOR_CONFIG.maxFileSize}
         multiple
         disabled={isProcessing}
-        formatNote={TEXTS.imageUpload.formats.images}
+        formatNote="Поддерживаются форматы: PNG, JPG, WEBP, PDF. Макс. размер: 50MB"
       />
 
       {/* Кнопки действий */}
